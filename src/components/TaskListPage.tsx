@@ -30,67 +30,70 @@ import {
   Plus,
   Edit3,
   Trash2,
-  User,
+  User as UserIcon,
   Clock,
   CheckCircle2,
   Circle,
   AlertCircle,
 } from "lucide-react";
 
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  estimatedEffort: number;
-  assignee: string;
-  status: "todo" | "in-progress" | "completed";
-  priority: "low" | "medium" | "high";
-  subtasks: Subtask[];
-  feature: string;
-}
-
-interface Subtask {
-  id: string;
-  title: string;
-  estimatedEffort: number;
-  assignee: string;
-  status: "todo" | "in-progress" | "completed";
-}
+import { ProjectTask, User } from "@/types";
+import { PriorityType, RoleType, TaskType } from "@/enums";
+import { useNavigate } from "react-router-dom";
+import SelectTeamMember from "./SelectTeamMember";
 
 interface TaskListPageProps {
-  initialTasks?: Task[];
-  teamMembers?: string[];
-  onTaskUpdate?: (tasks: Task[]) => void;
-  onNavigateToGantt?: () => void;
+  initialTasks?: ProjectTask[];
+  onTaskUpdate?: (tasks: ProjectTask[]) => void;
 }
 
 const TaskListPage: React.FC<TaskListPageProps> = ({
   initialTasks = [],
-  teamMembers = [
-    "John Doe",
-    "Jane Smith",
-    "Alice Johnson",
-    "Bob Brown",
-    "Charlie Davis",
-  ],
   onTaskUpdate = () => {},
-  onNavigateToGantt = () => {},
 }) => {
-  const [tasks, setTasks] = useState<Task[]>(
+  const navigate = useNavigate();
+  const [tasks, setTasks] = useState<ProjectTask[]>(
     initialTasks.length > 0 ? initialTasks : mockTasks
   );
-  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
-  const [editingTask, setEditingTask] = useState<string | null>(null);
-  const [editingSubtask, setEditingSubtask] = useState<string | null>(null);
+  const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
+  const [editingTask, setEditingTask] = useState<number | null>(null);
+  const [editingTaskDescription, setEditingTaskDescription] = useState<
+    number | null
+  >(null);
+  const [editingSubtask, setEditingSubtask] = useState<number | null>(null);
   const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = useState(false);
   const [isAddSubtaskDialogOpen, setIsAddSubtaskDialogOpen] = useState(false);
   const [selectedTaskForSubtask, setSelectedTaskForSubtask] = useState<
-    string | null
+    number | null
   >(null);
-  const [newTask, setNewTask] = useState<Partial<Task>>({});
-  const [newSubtask, setNewSubtask] = useState<Partial<Subtask>>({});
+  const [newTask, setNewTask] = useState<Partial<ProjectTask>>({});
+  const [newSubtask, setNewSubtask] = useState<Partial<ProjectTask>>({});
 
-  const toggleTaskExpansion = (taskId: string) => {
+  const teamMembers: User[] = [
+    {
+      id: 1,
+      name: "John Doe",
+      email: "john.doe@example.com",
+      role: RoleType.PM,
+      avatar: "https://via.placeholder.com/150",
+    },
+    {
+      id: 2,
+      name: "Jane Smith",
+      email: "jane.smith@example.com",
+      role: RoleType.FE,
+      avatar: "https://via.placeholder.com/150",
+    },
+    {
+      id: 3,
+      name: "Alice Johnson",
+      email: "alice.johnson@example.com",
+      role: RoleType.BE,
+      avatar: "https://via.placeholder.com/150",
+    },
+  ];
+
+  const toggleTaskExpansion = (taskId: number) => {
     const newExpanded = new Set(expandedTasks);
     if (newExpanded.has(taskId)) {
       newExpanded.delete(taskId);
@@ -100,7 +103,7 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
     setExpandedTasks(newExpanded);
   };
 
-  const updateTask = (taskId: string, updates: Partial<Task>) => {
+  const updateTask = (taskId: number, updates: Partial<ProjectTask>) => {
     const updatedTasks = tasks.map((task) =>
       task.id === taskId ? { ...task, ...updates } : task
     );
@@ -109,16 +112,17 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
   };
 
   const updateSubtask = (
-    taskId: string,
-    subtaskId: string,
-    updates: Partial<Subtask>
+    taskId: number,
+    subtaskId: number,
+    updates: Partial<ProjectTask>
   ) => {
     const updatedTasks = tasks.map((task) => {
       if (task.id === taskId) {
-        const updatedSubtasks = task.subtasks.map((subtask) =>
+        const updatedSubtasks = task.children.map((subtask) =>
           subtask.id === subtaskId ? { ...subtask, ...updates } : subtask
         );
-        return { ...task, subtasks: updatedSubtasks };
+        console.log(updatedSubtasks);
+        return { ...task, children: updatedSubtasks };
       }
       return task;
     });
@@ -129,16 +133,15 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
   const addTask = () => {
     if (!newTask.title || !newTask.description) return;
 
-    const task: Task = {
-      id: `task-${Date.now()}`,
+    const task: ProjectTask = {
+      id: Math.random(),
       title: newTask.title,
       description: newTask.description,
-      estimatedEffort: newTask.estimatedEffort || 1,
-      assignee: newTask.assignee || teamMembers[0],
-      status: "todo",
-      priority: (newTask.priority as Task["priority"]) || "medium",
-      subtasks: [],
-      feature: newTask.feature || "General",
+      estimates: newTask.estimates || 1,
+      assignee_id: newTask.assignee_id || 1,
+      priority: newTask.priority || 1,
+      children: [],
+      task_type: newTask.task_type || TaskType.General,
     };
 
     const updatedTasks = [...tasks, task];
@@ -151,17 +154,19 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
   const addSubtask = () => {
     if (!newSubtask.title || !selectedTaskForSubtask) return;
 
-    const subtask: Subtask = {
-      id: `subtask-${Date.now()}`,
+    const subtask: ProjectTask = {
+      id: Math.random(),
       title: newSubtask.title,
-      estimatedEffort: newSubtask.estimatedEffort || 1,
-      assignee: newSubtask.assignee || teamMembers[0],
-      status: "todo",
+      estimates: newSubtask.estimates || 1,
+      assignee_id: newSubtask.assignee_id || 1,
+      priority: newSubtask.priority || 1,
+      description: newSubtask.description || "",
+      task_type: newSubtask.task_type || TaskType.General,
     };
 
     const updatedTasks = tasks.map((task) => {
       if (task.id === selectedTaskForSubtask) {
-        return { ...task, subtasks: [...task.subtasks, subtask] };
+        return { ...task, children: [...task.children, subtask] };
       }
       return task;
     });
@@ -173,18 +178,18 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
     setSelectedTaskForSubtask(null);
   };
 
-  const deleteTask = (taskId: string) => {
+  const deleteTask = (taskId: number) => {
     const updatedTasks = tasks.filter((task) => task.id !== taskId);
     setTasks(updatedTasks);
     onTaskUpdate(updatedTasks);
   };
 
-  const deleteSubtask = (taskId: string, subtaskId: string) => {
+  const deleteSubtask = (taskId: number, subtaskId: number) => {
     const updatedTasks = tasks.map((task) => {
       if (task.id === taskId) {
         return {
           ...task,
-          subtasks: task.subtasks.filter((subtask) => subtask.id !== subtaskId),
+          children: task.children.filter((subtask) => subtask.id !== subtaskId),
         };
       }
       return task;
@@ -193,43 +198,24 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
     onTaskUpdate(updatedTasks);
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "completed":
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case "in-progress":
-        return <AlertCircle className="h-4 w-4 text-yellow-500" />;
-      default:
-        return <Circle className="h-4 w-4 text-gray-400" />;
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (priority: number) => {
     switch (priority) {
-      case "high":
+      case 1:
         return "bg-red-100 text-red-800";
-      case "medium":
+      case 2:
         return "bg-yellow-100 text-yellow-800";
-      case "low":
+      case 3:
         return "bg-green-100 text-green-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
   };
 
-  const groupedTasks = tasks.reduce((acc, task) => {
-    if (!acc[task.feature]) {
-      acc[task.feature] = [];
-    }
-    acc[task.feature].push(task);
-    return acc;
-  }, {} as Record<string, Task[]>);
-
   const getTotalEffort = () => {
     return tasks.reduce((total, task) => {
-      const taskEffort = task.estimatedEffort;
-      const subtaskEffort = task.subtasks.reduce(
-        (subTotal, subtask) => subTotal + subtask.estimatedEffort,
+      const taskEffort = task.estimates || 0;
+      const subtaskEffort = task.children.reduce(
+        (subTotal, subtask) => subTotal + subtask.estimates,
         0
       );
       return total + taskEffort + subtaskEffort;
@@ -237,14 +223,14 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
   };
 
   const getCompletedTasks = () => {
-    return tasks.filter((task) => task.status === "completed").length;
+    return tasks.filter((task) => task.priority === 1).length;
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="min-h-screen p-6 bg-background">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
+        <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Task Management</h1>
             <p className="text-muted-foreground">
@@ -253,17 +239,22 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
           </div>
           <div className="flex gap-2">
             <Button onClick={() => setIsAddTaskDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="w-4 h-4 mr-2" />
               Add Task
             </Button>
-            <Button variant="outline" onClick={onNavigateToGantt}>
-              View Gantt Chart
+            <Button
+              variant="outline"
+              onClick={() => {
+                navigate("/gantt-chart");
+              }}
+            >
+              Generate Gantt Chart
             </Button>
           </div>
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -273,23 +264,25 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                   </p>
                   <p className="text-2xl font-bold">{tasks.length}</p>
                 </div>
-                <Circle className="h-8 w-8 text-blue-500" />
+                <Circle className="w-8 h-8 text-blue-500" />
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Completed
-                  </p>
-                  <p className="text-2xl font-bold">{getCompletedTasks()}</p>
+          {false && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Completed
+                    </p>
+                    <p className="text-2xl font-bold">{getCompletedTasks()}</p>
+                  </div>
+                  <CheckCircle2 className="w-8 h-8 text-green-500" />
                 </div>
-                <CheckCircle2 className="h-8 w-8 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -300,7 +293,7 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                   <p className="text-2xl font-bold">{getTotalEffort()}</p>
                   <p className="text-xs text-muted-foreground">days</p>
                 </div>
-                <Clock className="h-8 w-8 text-purple-500" />
+                <Clock className="w-8 h-8 text-purple-500" />
               </div>
             </CardContent>
           </Card>
@@ -312,10 +305,10 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                     Features
                   </p>
                   <p className="text-2xl font-bold">
-                    {Object.keys(groupedTasks).length}
+                    {Object.keys(tasks).length}
                   </p>
                 </div>
-                <User className="h-8 w-8 text-orange-500" />
+                <UserIcon className="w-8 h-8 text-orange-500" />
               </div>
             </CardContent>
           </Card>
@@ -323,273 +316,343 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
 
         {/* Task Groups */}
         <div className="space-y-6">
-          {Object.entries(groupedTasks).map(([feature, featureTasks]) => (
-            <Card key={feature} className="bg-white">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>{feature}</span>
-                  <Badge variant="outline">{featureTasks.length} tasks</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {featureTasks.map((task) => (
-                  <Card key={task.id} className="border-l-4 border-l-blue-500">
-                    <CardContent className="p-4">
-                      {/* Task Header */}
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          {getStatusIcon(task.status)}
-                          <div className="flex-1">
-                            {editingTask === task.id ? (
-                              <Input
-                                value={task.title}
-                                onChange={(e) =>
-                                  updateTask(task.id, { title: e.target.value })
-                                }
-                                onBlur={() => setEditingTask(null)}
-                                onKeyDown={(e) =>
-                                  e.key === "Enter" && setEditingTask(null)
-                                }
-                                className="font-medium"
-                                autoFocus
-                              />
-                            ) : (
-                              <h3
-                                className="font-medium cursor-pointer hover:text-blue-600"
-                                onClick={() => setEditingTask(task.id)}
-                              >
-                                {task.title}
-                              </h3>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge className={getPriorityColor(task.priority)}>
-                            {task.priority}
-                          </Badge>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedTaskForSubtask(task.id);
-                              setIsAddSubtaskDialogOpen(true);
-                            }}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deleteTask(task.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Task Details */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
-                        <div>
-                          <Label className="text-xs text-muted-foreground">
-                            Description
-                          </Label>
-                          <p className="text-sm">{task.description}</p>
-                        </div>
-                        <div>
-                          <Label className="text-xs text-muted-foreground">
-                            Assignee
-                          </Label>
-                          <Select
-                            value={task.assignee}
-                            onValueChange={(value) =>
-                              updateTask(task.id, { assignee: value })
-                            }
-                          >
-                            <SelectTrigger className="h-8">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {teamMembers.map((member) => (
-                                <SelectItem key={member} value={member}>
-                                  {member}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label className="text-xs text-muted-foreground">
-                            Effort (days)
-                          </Label>
-                          <Input
-                            type="number"
-                            value={task.estimatedEffort}
-                            onChange={(e) =>
-                              updateTask(task.id, {
-                                estimatedEffort: parseInt(e.target.value) || 1,
-                              })
-                            }
-                            className="h-8"
-                            min="1"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Status Selector */}
-                      <div className="mb-3">
-                        <Select
-                          value={task.status}
-                          onValueChange={(value) =>
-                            updateTask(task.id, {
-                              status: value as Task["status"],
-                            })
+          {tasks.map((task) => (
+            <Card key={task.id} className="border-l-4 border-l-blue-500">
+              <CardContent className="p-4">
+                {/* Task Header */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      {editingTask === task.id ? (
+                        <Input
+                          value={task.title}
+                          onChange={(e) =>
+                            updateTask(task.id, { title: e.target.value })
                           }
+                          onBlur={() => setEditingTask(null)}
+                          onKeyDown={(e) =>
+                            e.key === "Enter" && setEditingTask(null)
+                          }
+                          className="font-medium"
+                          autoFocus
+                          placeholder="Enter task title"
+                          style={{ minWidth: 400 }}
+                        />
+                      ) : (
+                        <h3
+                          className={`font-medium cursor-pointer hover:text-blue-600 min-w-400 ${
+                            !task.title && "text-gray-400"
+                          }`}
+                          onClick={() => setEditingTask(task.id)}
                         >
-                          <SelectTrigger className="w-40 h-8">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="todo">To Do</SelectItem>
-                            <SelectItem value="in-progress">
-                              In Progress
-                            </SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Subtasks */}
-                      {task.subtasks.length > 0 && (
-                        <Collapsible
-                          open={expandedTasks.has(task.id)}
-                          onOpenChange={() => toggleTaskExpansion(task.id)}
-                        >
-                          <CollapsibleTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              className="p-0 h-auto font-normal"
-                            >
-                              {expandedTasks.has(task.id) ? (
-                                <ChevronDown className="h-4 w-4 mr-1" />
-                              ) : (
-                                <ChevronRight className="h-4 w-4 mr-1" />
-                              )}
-                              Subtasks ({task.subtasks.length})
-                            </Button>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent className="mt-3">
-                            <div className="space-y-2 pl-4 border-l-2 border-gray-200">
-                              {task.subtasks.map((subtask) => (
-                                <div
-                                  key={subtask.id}
-                                  className="flex items-center justify-between p-2 bg-gray-50 rounded"
-                                >
-                                  <div className="flex items-center gap-2 flex-1">
-                                    {getStatusIcon(subtask.status)}
-                                    {editingSubtask === subtask.id ? (
-                                      <Input
-                                        value={subtask.title}
-                                        onChange={(e) =>
-                                          updateSubtask(task.id, subtask.id, {
-                                            title: e.target.value,
-                                          })
-                                        }
-                                        onBlur={() => setEditingSubtask(null)}
-                                        onKeyDown={(e) =>
-                                          e.key === "Enter" &&
-                                          setEditingSubtask(null)
-                                        }
-                                        className="text-sm h-8"
-                                        autoFocus
-                                      />
-                                    ) : (
-                                      <span
-                                        className="text-sm cursor-pointer hover:text-blue-600 flex-1"
-                                        onClick={() =>
-                                          setEditingSubtask(subtask.id)
-                                        }
-                                      >
-                                        {subtask.title}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Select
-                                      value={subtask.assignee}
-                                      onValueChange={(value) =>
-                                        updateSubtask(task.id, subtask.id, {
-                                          assignee: value,
-                                        })
-                                      }
-                                    >
-                                      <SelectTrigger className="w-32 h-7 text-xs">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {teamMembers.map((member) => (
-                                          <SelectItem
-                                            key={member}
-                                            value={member}
-                                          >
-                                            {member}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                    <Input
-                                      type="number"
-                                      value={subtask.estimatedEffort}
-                                      onChange={(e) =>
-                                        updateSubtask(task.id, subtask.id, {
-                                          estimatedEffort:
-                                            parseInt(e.target.value) || 1,
-                                        })
-                                      }
-                                      className="w-16 h-7 text-xs"
-                                      min="1"
-                                    />
-                                    <Select
-                                      value={subtask.status}
-                                      onValueChange={(value) =>
-                                        updateSubtask(task.id, subtask.id, {
-                                          status: value as Subtask["status"],
-                                        })
-                                      }
-                                    >
-                                      <SelectTrigger className="w-24 h-7 text-xs">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="todo">
-                                          To Do
-                                        </SelectItem>
-                                        <SelectItem value="in-progress">
-                                          In Progress
-                                        </SelectItem>
-                                        <SelectItem value="completed">
-                                          Done
-                                        </SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() =>
-                                        deleteSubtask(task.id, subtask.id)
-                                      }
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
+                          {task.title || "Enter task title"}
+                        </h3>
                       )}
-                    </CardContent>
-                  </Card>
-                ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {false && (
+                      <Badge className={getPriorityColor(task.priority)}>
+                        {PriorityType[task.priority]}
+                      </Badge>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedTaskForSubtask(task.id);
+                        setIsAddSubtaskDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteTask(task.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Task Details */}
+                <div className="grid grid-cols-1 gap-4 mb-3 md:grid-cols-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">
+                      Description
+                    </Label>
+                    {editingTaskDescription === task.id ? (
+                      <Textarea
+                        value={task.description}
+                        onChange={(e) =>
+                          updateTask(task.id, { description: e.target.value })
+                        }
+                        onBlur={() => setEditingTaskDescription(null)}
+                        onKeyDown={(e) =>
+                          e.key === "Enter" && setEditingTaskDescription(null)
+                        }
+                        className="text-sm min-h-[60px] resize-none"
+                        autoFocus
+                        placeholder="Enter task description"
+                      />
+                    ) : (
+                      <p
+                        className={`text-sm cursor-pointer hover:text-blue-600 hover:bg-blue-50 p-1 rounded transition-colors ${
+                          !task.description && "text-gray-400"
+                        }`}
+                        onClick={() => setEditingTaskDescription(task.id)}
+                      >
+                        {task.description || "Enter task description"}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">
+                      Task type
+                    </Label>
+                    <Select
+                      value={task.task_type.toString()}
+                      onValueChange={(value) =>
+                        updateTask(task.id, { task_type: parseInt(value) })
+                      }
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select task type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">NA</SelectItem>
+                        <SelectItem value="1">FE</SelectItem>
+                        <SelectItem value="2">BE</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">
+                      Assignee
+                    </Label>
+                    <SelectTeamMember
+                      value={`${task.assignee_id}`}
+                      onValueChange={(value) =>
+                        updateTask(task.id, { assignee_id: parseInt(value) })
+                      }
+                      taskType={task.task_type}
+                    />
+                    {/* <Select
+                      value={`${task.assignee_id}`}
+                      onValueChange={(value) =>
+                        updateTask(task.id, { assignee_id: parseInt(value) })
+                      }
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select assignee" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {teamMembers.map((member) => (
+                          <SelectItem key={member.id} value={`${member.id}`}>
+                            {member.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select> */}
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">
+                      Effort (days)
+                    </Label>
+                    <Input
+                      type="number"
+                      value={task.estimates}
+                      onChange={(e) => {
+                        const val = e.target.value;
+
+                        // Allow empty string input (clearing input)
+                        if (val === "") {
+                          updateTask(task.id, { estimates: undefined }); // or null
+                          return;
+                        }
+
+                        // Otherwise parse normally
+                        const parsed = parseInt(val, 10);
+                        if (!isNaN(parsed)) {
+                          updateTask(task.id, { estimates: parsed });
+                        }
+                      }}
+                      className="h-8"
+                      min="0"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+
+                {/* Status Selector */}
+                {false && (
+                  <div className="mb-3">
+                    <Select
+                      value={`${task.priority}`}
+                      onValueChange={(value) =>
+                        updateTask(task.id, {
+                          priority: parseInt(value),
+                        })
+                      }
+                    >
+                      <SelectTrigger className="w-40 h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todo">To Do</SelectItem>
+                        <SelectItem value="in-progress">In Progress</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Subtasks */}
+                {task.children?.length > 0 && (
+                  <Collapsible
+                    open={expandedTasks.has(task.id)}
+                    onOpenChange={() => toggleTaskExpansion(task.id)}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="h-auto p-0 font-normal"
+                      >
+                        {expandedTasks.has(task.id) ? (
+                          <ChevronDown className="w-4 h-4 mr-1" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 mr-1" />
+                        )}
+                        Subtasks ({task.children.length})
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-3">
+                      <div className="pl-4 space-y-2 border-l-2 border-gray-200">
+                        {task.children.map((subtask) => (
+                          <div
+                            key={subtask.id}
+                            className="flex items-center justify-between p-2 rounded bg-gray-50"
+                          >
+                            <div className="flex items-center flex-1 gap-2 mr-2">
+                              {editingSubtask === subtask.id ? (
+                                <Input
+                                  value={subtask.title}
+                                  onChange={(e) =>
+                                    updateSubtask(task.id, subtask.id, {
+                                      title: e.target.value,
+                                    })
+                                  }
+                                  onBlur={() => setEditingSubtask(null)}
+                                  onKeyDown={(e) =>
+                                    e.key === "Enter" && setEditingSubtask(null)
+                                  }
+                                  className="h-8 text-sm"
+                                  autoFocus
+                                />
+                              ) : (
+                                <span
+                                  className="flex-1 text-sm cursor-pointer hover:text-blue-600"
+                                  onClick={() => setEditingSubtask(subtask.id)}
+                                >
+                                  {subtask.title}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Select
+                                value={subtask.task_type.toString()}
+                                onValueChange={(value) =>
+                                  updateSubtask(task.id, subtask.id, {
+                                    task_type: parseInt(value),
+                                  })
+                                }
+                              >
+                                <SelectTrigger className="w-32 h-7 text-xs">
+                                  <SelectValue placeholder="Select task type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="0">NA</SelectItem>
+                                  <SelectItem value="1">FE</SelectItem>
+                                  <SelectItem value="2">BE</SelectItem>
+                                </SelectContent>
+                              </Select>
+
+                              <SelectTeamMember
+                                variant="small"
+                                value={`${subtask.assignee_id}`}
+                                onValueChange={(value) =>
+                                  updateSubtask(task.id, subtask.id, {
+                                    assignee_id: parseInt(value),
+                                  })
+                                }
+                                taskType={subtask.task_type}
+                              />
+
+                              <Input
+                                type="number"
+                                value={subtask.estimates}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === "") {
+                                    updateSubtask(task.id, subtask.id, {
+                                      estimates: undefined,
+                                    });
+                                    return;
+                                  }
+                                  const parsed = parseInt(val, 10);
+                                  if (!isNaN(parsed)) {
+                                    updateSubtask(task.id, subtask.id, {
+                                      estimates: parsed,
+                                    });
+                                  }
+                                }}
+                                className="w-16 text-xs h-7"
+                                min="0"
+                                placeholder="0"
+                              />
+                              {false && (
+                                <Select
+                                  value={`${subtask.priority}`}
+                                  onValueChange={(value) =>
+                                    updateSubtask(task.id, subtask.id, {
+                                      priority: parseInt(value),
+                                    })
+                                  }
+                                >
+                                  <SelectTrigger className="w-24 text-xs h-7">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="todo">To Do</SelectItem>
+                                    <SelectItem value="in-progress">
+                                      In Progress
+                                    </SelectItem>
+                                    <SelectItem value="completed">
+                                      Done
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  deleteSubtask(task.id, subtask.id)
+                                }
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -630,51 +693,46 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                   placeholder="Describe the task..."
                 />
               </div>
+              <div>
+                <Label htmlFor="task-type">Task type</Label>
+                <Select
+                  value={newTask.task_type?.toString() || "0"}
+                  onValueChange={(value) =>
+                    setNewTask({ ...newTask, task_type: parseInt(value) })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">NA</SelectItem>
+                    <SelectItem value="1">FE</SelectItem>
+                    <SelectItem value="2">BE</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="task-effort">Estimated Effort (days)</Label>
                   <Input
                     id="task-effort"
                     type="number"
-                    value={newTask.estimatedEffort || 1}
+                    value={newTask.estimates || 1}
                     onChange={(e) =>
                       setNewTask({
                         ...newTask,
-                        estimatedEffort: parseInt(e.target.value) || 1,
+                        estimates: parseInt(e.target.value) || 1,
                       })
                     }
                     min="1"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="task-priority">Priority</Label>
-                  <Select
-                    value={newTask.priority || "medium"}
-                    onValueChange={(value) =>
-                      setNewTask({
-                        ...newTask,
-                        priority: value as Task["priority"],
-                      })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
                   <Label htmlFor="task-assignee">Assignee</Label>
                   <Select
-                    value={newTask.assignee || teamMembers[0]}
+                    value={`${newTask.assignee_id}` || `${teamMembers[0].id}`}
                     onValueChange={(value) =>
-                      setNewTask({ ...newTask, assignee: value })
+                      setNewTask({ ...newTask, assignee_id: parseInt(value) })
                     }
                   >
                     <SelectTrigger>
@@ -682,14 +740,39 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                     </SelectTrigger>
                     <SelectContent>
                       {teamMembers.map((member) => (
-                        <SelectItem key={member} value={member}>
-                          {member}
+                        <SelectItem key={member.id} value={`${member.id}`}>
+                          {member.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
+                {false && (
+                  <div>
+                    <Label htmlFor="task-priority">Priority</Label>
+                    <Select
+                      value={`${newTask.priority}` || "1"}
+                      onValueChange={(value) =>
+                        setNewTask({
+                          ...newTask,
+                          priority: parseInt(value),
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {/* <div>
                   <Label htmlFor="task-feature">Feature</Label>
                   <Input
                     id="task-feature"
@@ -699,7 +782,7 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                     }
                     placeholder="Feature name..."
                   />
-                </div>
+                </div> */}
               </div>
               <div className="flex justify-end gap-2">
                 <Button
@@ -747,11 +830,11 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                   <Input
                     id="subtask-effort"
                     type="number"
-                    value={newSubtask.estimatedEffort || 1}
+                    value={newSubtask.estimates || 1}
                     onChange={(e) =>
                       setNewSubtask({
                         ...newSubtask,
-                        estimatedEffort: parseInt(e.target.value) || 1,
+                        estimates: parseInt(e.target.value) || 1,
                       })
                     }
                     min="1"
@@ -760,9 +843,14 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                 <div>
                   <Label htmlFor="subtask-assignee">Assignee</Label>
                   <Select
-                    value={newSubtask.assignee || teamMembers[0]}
+                    value={
+                      `${newSubtask.assignee_id}` || `${teamMembers[0].id}`
+                    }
                     onValueChange={(value) =>
-                      setNewSubtask({ ...newSubtask, assignee: value })
+                      setNewSubtask({
+                        ...newSubtask,
+                        assignee_id: parseInt(value),
+                      })
                     }
                   >
                     <SelectTrigger>
@@ -770,8 +858,8 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                     </SelectTrigger>
                     <SelectContent>
                       {teamMembers.map((member) => (
-                        <SelectItem key={member} value={member}>
-                          {member}
+                        <SelectItem key={member.id} value={`${member.id}`}>
+                          {member.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -796,114 +884,126 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
 };
 
 // Mock data for demonstration
-const mockTasks: Task[] = [
+const mockTasks: ProjectTask[] = [
   {
-    id: "task-1",
+    id: 1,
     title: "User Authentication System",
     description:
       "Implement secure login, registration, and password recovery flows",
-    estimatedEffort: 8,
-    assignee: "John Doe",
-    status: "in-progress",
-    priority: "high",
-    feature: "Authentication",
-    subtasks: [
+    estimates: 8,
+    assignee_id: 1,
+    priority: 1,
+    task_type: TaskType.BE,
+    children: [
       {
-        id: "subtask-1-1",
+        id: 101,
         title: "Login form UI",
-        estimatedEffort: 2,
-        assignee: "Alice Johnson",
-        status: "completed",
+        estimates: 2,
+        assignee_id: 2,
+        priority: 1,
+        task_type: TaskType.BE,
+        description: "Test describe",
       },
       {
-        id: "subtask-1-2",
+        id: 102,
         title: "Password validation logic",
-        estimatedEffort: 3,
-        assignee: "John Doe",
-        status: "in-progress",
+        estimates: 3,
+        assignee_id: 1,
+        priority: 1,
+        task_type: TaskType.FE,
+        description: "Test describe",
       },
       {
-        id: "subtask-1-3",
+        id: 3,
         title: "JWT token implementation",
-        estimatedEffort: 3,
-        assignee: "Bob Brown",
-        status: "todo",
+        estimates: 3,
+        assignee_id: 3,
+        priority: 1,
+        task_type: TaskType.BE,
+        description: "Test describe",
       },
     ],
   },
-  {
-    id: "task-2",
-    title: "User Profile Management",
-    description:
-      "Create user profile pages with edit capabilities and avatar upload",
-    estimatedEffort: 6,
-    assignee: "Jane Smith",
-    status: "todo",
-    priority: "medium",
-    feature: "User Management",
-    subtasks: [
-      {
-        id: "subtask-2-1",
-        title: "Profile page layout",
-        estimatedEffort: 2,
-        assignee: "Alice Johnson",
-        status: "todo",
-      },
-      {
-        id: "subtask-2-2",
-        title: "Avatar upload functionality",
-        estimatedEffort: 2,
-        assignee: "Charlie Davis",
-        status: "todo",
-      },
-    ],
-  },
-  {
-    id: "task-3",
-    title: "Admin Dashboard",
-    description:
-      "Build comprehensive admin interface for user management and analytics",
-    estimatedEffort: 12,
-    assignee: "Bob Brown",
-    status: "todo",
-    priority: "medium",
-    feature: "Admin Panel",
-    subtasks: [
-      {
-        id: "subtask-3-1",
-        title: "User management table",
-        estimatedEffort: 4,
-        assignee: "Jane Smith",
-        status: "todo",
-      },
-      {
-        id: "subtask-3-2",
-        title: "Analytics charts",
-        estimatedEffort: 4,
-        assignee: "Charlie Davis",
-        status: "todo",
-      },
-      {
-        id: "subtask-3-3",
-        title: "System configuration panel",
-        estimatedEffort: 4,
-        assignee: "Bob Brown",
-        status: "todo",
-      },
-    ],
-  },
-  {
-    id: "task-4",
-    title: "API Integration",
-    description:
-      "Connect frontend with backend services and implement error handling",
-    estimatedEffort: 5,
-    assignee: "Charlie Davis",
-    status: "completed",
-    priority: "high",
-    feature: "Backend Integration",
-    subtasks: [],
-  },
+  // {
+  //   id: 2,
+  //   title: "User Profile Management",
+  //   description:
+  //     "Create user profile pages with edit capabilities and avatar upload",
+  //   estimates: 6,
+  //   assignee_id: 2,
+  //   priority: 1,
+  //   task_type: TaskType.FE,
+  //   children: [
+  //     {
+  //       id: 201,
+  //       title: "Profile page layout",
+  //       estimates: 2,
+  //       assignee_id: 1,
+  //       priority: 1,
+  //       task_type: TaskType.FE,
+  //       description: 'Test describe',
+  //     },
+  //     {
+  //       id: 202,
+  //       title: "Avatar upload functionality",
+  //       estimates: 2,
+  //       assignee_id: 3,
+  //       priority: 1,
+  //       task_type: TaskType.FE,
+  //       description: 'Test describe',
+  //     },
+  //   ],
+  // },
+  // {
+  //   id: 3,
+  //   title: "Admin Dashboard",
+  //   description:
+  //     "Build comprehensive admin interface for user management and analytics",
+  //   estimates: 12,
+  //   assignee_id: 3,
+  //   priority: 1,
+  //   task_type: TaskType.FE,
+  //   children: [
+  //     {
+  //       id: 301,
+  //       title: "User management table",
+  //       estimates: 4,
+  //       assignee_id: 3,
+  //       priority: 1,
+  //       task_type: TaskType.FE,
+  //       description: 'Test describe',
+  //     },
+  //     {
+  //       id: 302,
+  //       title: "Analytics charts",
+  //       estimates: 4,
+  //       assignee_id: 3,
+  //       priority: 1,
+  //       task_type: TaskType.FE,
+  //       description: 'Test describe',
+  //     },
+  //     {
+  //       id: 303,
+  //       title: "System configuration panel",
+  //       estimates: 4,
+  //       assignee_id: 3,
+  //       priority: 1,
+  //       task_type: TaskType.FE,
+  //       description: 'Test describe',
+  //     },
+  //   ],
+  // },
+  // {
+  //   id: 4,
+  //   title: "API Integration",
+  //   description:
+  //     "Connect frontend with backend services and implement error handling",
+  //   estimates: 5,
+  //   assignee_id: 3,
+  //   priority: 1,
+  //   task_type: TaskType.BE,
+  //   children: [],
+  // },
 ];
 
 export default TaskListPage;

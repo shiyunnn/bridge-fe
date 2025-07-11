@@ -165,6 +165,7 @@ const GanttChart = () => {
         user: 'Tim',
         base_start: new Date(2024, 5, 11),
         base_end: new Date(2024, 5, 13),
+        details: 'www.google.com',
       },
     ],
   };
@@ -242,6 +243,9 @@ const GanttChart = () => {
           start={new Date(2024, 5, 9)}
           end={new Date(2024, 8, 31)}
           highlightTime={highlightTime}
+          onDoubleClick={(task) => {
+            console.log(task);
+          }}
         />
       </Container>
     </Willow>

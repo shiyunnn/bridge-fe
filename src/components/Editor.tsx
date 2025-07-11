@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/mantine';
 import '@blocknote/core/fonts/inter.css';
@@ -15,18 +15,20 @@ const Wrapper = styled.div`
   min-height: 240px;
 `;
 
-function Editor() {
+function Editor({ onContentChange }: { onContentChange: (content: string) => void }) {
+  const [markdown, setMarkdown] = useState<string>("");
+
   const editor = useCreateBlockNote();
 
-  editor.onChange((editor, { getChanges }) => {
-    console.log('Editor updated');
-    const changes = getChanges();
-    console.log(changes);
-  });
+  const onChange = async () => {
+    const markdown = await editor.blocksToMarkdownLossy(editor.document);
+    setMarkdown(markdown);
+    onContentChange(markdown);
+  };
 
   return (
     <Wrapper>
-      <BlockNoteView editor={editor} theme="light" />
+      <BlockNoteView editor={editor} onChange={onChange} theme="light" />
     </Wrapper>
   );
 }

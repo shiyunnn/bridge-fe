@@ -30,8 +30,8 @@ interface PRDData {
 }
 
 const PRDInputPage: React.FC<PRDInputPageProps> = ({
-  onSubmit = () => {},
-  onGenerateTasks = () => {},
+  onSubmit = () => { },
+  onGenerateTasks = () => { },
 }) => {
   const [activeTab, setActiveTab] = useState<"confluence" | "manual">(
     "confluence"
@@ -104,7 +104,7 @@ This project aims to develop a comprehensive user management system with the fol
   };
 
   const handleSubmit = () => {
-    const content = activeTab === "confluence" ? fetchedContent : manualContent;
+    const content = activeTab === "confluence" ? confluenceUrl : manualContent;
     const prdData: PRDData = {
       title: prdTitle,
       content,
@@ -275,7 +275,7 @@ This project aims to develop a comprehensive user management system with the fol
                           onChange={(e) => setConfluenceUrl(e.target.value)}
                           disabled={isLoading}
                         />
-                        <Button
+                        {false && <Button
                           onClick={handleConfluenceFetch}
                           disabled={!confluenceUrl.trim() || isLoading}
                           className="min-w-[100px]"
@@ -288,7 +288,7 @@ This project aims to develop a comprehensive user management system with the fol
                           ) : (
                             "Fetch Content"
                           )}
-                        </Button>
+                        </Button>}
                       </div>
                     </div>
 
@@ -344,7 +344,7 @@ Example:
                           className="min-h-[300px] font-mono text-sm"
                         />
                       )}
-                      <Editor />
+                      <Editor onContentChange={setManualContent} />
                       <p className="text-xs text-muted-foreground">
                         Supports Markdown formatting. Use headers (#) and bullet
                         points (-) to structure your requirements.
