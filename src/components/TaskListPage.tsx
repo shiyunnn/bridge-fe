@@ -77,7 +77,7 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
   onNavigateToGantt = () => {},
 }) => {
   const [tasks, setTasks] = useState<Task[]>(
-    initialTasks.length > 0 ? initialTasks : mockTasks,
+    initialTasks.length > 0 ? initialTasks : mockTasks
   );
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [editingTask, setEditingTask] = useState<string | null>(null);
@@ -102,7 +102,7 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
 
   const updateTask = (taskId: string, updates: Partial<Task>) => {
     const updatedTasks = tasks.map((task) =>
-      task.id === taskId ? { ...task, ...updates } : task,
+      task.id === taskId ? { ...task, ...updates } : task
     );
     setTasks(updatedTasks);
     onTaskUpdate(updatedTasks);
@@ -111,12 +111,12 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
   const updateSubtask = (
     taskId: string,
     subtaskId: string,
-    updates: Partial<Subtask>,
+    updates: Partial<Subtask>
   ) => {
     const updatedTasks = tasks.map((task) => {
       if (task.id === taskId) {
         const updatedSubtasks = task.subtasks.map((subtask) =>
-          subtask.id === subtaskId ? { ...subtask, ...updates } : subtask,
+          subtask.id === subtaskId ? { ...subtask, ...updates } : subtask
         );
         return { ...task, subtasks: updatedSubtasks };
       }
@@ -217,23 +217,20 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
     }
   };
 
-  const groupedTasks = tasks.reduce(
-    (acc, task) => {
-      if (!acc[task.feature]) {
-        acc[task.feature] = [];
-      }
-      acc[task.feature].push(task);
-      return acc;
-    },
-    {} as Record<string, Task[]>,
-  );
+  const groupedTasks = tasks.reduce((acc, task) => {
+    if (!acc[task.feature]) {
+      acc[task.feature] = [];
+    }
+    acc[task.feature].push(task);
+    return acc;
+  }, {} as Record<string, Task[]>);
 
   const getTotalEffort = () => {
     return tasks.reduce((total, task) => {
       const taskEffort = task.estimatedEffort;
       const subtaskEffort = task.subtasks.reduce(
         (subTotal, subtask) => subTotal + subtask.estimatedEffort,
-        0,
+        0
       );
       return total + taskEffort + subtaskEffort;
     }, 0);
@@ -654,7 +651,10 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                   <Select
                     value={newTask.priority || "medium"}
                     onValueChange={(value) =>
-                      setNewTask({ ...newTask, priority: value })
+                      setNewTask({
+                        ...newTask,
+                        priority: value as Task["priority"],
+                      })
                     }
                   >
                     <SelectTrigger>

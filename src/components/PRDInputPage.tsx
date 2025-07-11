@@ -27,7 +27,7 @@ const PRDInputPage: React.FC<PRDInputPageProps> = ({
   onGenerateTasks = () => { },
 }) => {
   const [activeTab, setActiveTab] = useState<"confluence" | "manual">(
-    "confluence",
+    "confluence"
   );
   const [confluenceUrl, setConfluenceUrl] = useState("");
   const [manualContent, setManualContent] = useState("");
@@ -129,17 +129,44 @@ This project aims to develop a comprehensive user management system with the fol
     return content.slice(0, 200) + (content.length > 200 ? "..." : "");
   };
 
+  const renderMarkdown = (text: string) => {
+    return (
+      text
+        // Headers
+        .replace(
+          /^### (.*$)/gim,
+          '<h3 class="text-lg font-semibold mt-3 mb-2">$1</h3>'
+        )
+        .replace(
+          /^## (.*$)/gim,
+          '<h2 class="text-xl font-semibold mt-4 mb-2">$1</h2>'
+        )
+        .replace(
+          /^# (.*$)/gim,
+          '<h1 class="text-2xl font-bold mt-4 mb-3">$1</h1>'
+        )
+        // Bold
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+        // Italic
+        .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
+        // Bullet points
+        .replace(/^- (.*$)/gim, '<li class="ml-4">$1</li>')
+        // Convert consecutive list items to proper lists
+        .replace(
+          /(<li.*<\/li>)/gs,
+          '<ul class="list-disc space-y-1 my-2">$1</ul>'
+        )
+        // Clean up nested lists
+        .replace(/<\/ul>\s*<ul>/g, "")
+        // Line breaks
+        .replace(/\n/g, "<br>")
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold">Project Requirements Input</h1>
-          <p className="text-muted-foreground">
-            Start your project by defining requirements through Confluence or
-            manual entry
-          </p>
-        </div>
 
         {/* Main Input Card */}
         <Card className="bg-white">
@@ -175,7 +202,11 @@ This project aims to develop a comprehensive user management system with the fol
                     value="confluence"
                     className="flex items-center gap-2"
                   >
-                    <Link className="h-4 w-4" />
+                    <img
+                      src="/confluence-logo.svg"
+                      alt="Confluence"
+                      className="h-4 w-auto"
+                    />
                     Confluence Link
                   </TabsTrigger>
                   <TabsTrigger
@@ -228,9 +259,12 @@ This project aims to develop a comprehensive user management system with the fol
                         <p className="text-sm text-muted-foreground mb-2">
                           Preview:
                         </p>
-                        <p className="text-sm whitespace-pre-wrap">
-                          {getContentPreview()}
-                        </p>
+                        <div
+                          className="text-sm prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{
+                            __html: renderMarkdown(getContentPreview()),
+                          }}
+                        />
                       </div>
                     </div>
                   )}
@@ -242,7 +276,21 @@ This project aims to develop a comprehensive user management system with the fol
                     <Label htmlFor="manual-content">Project Requirements</Label>
                     {false && <Textarea
                       id="manual-content"
-                      placeholder="Enter your project requirements here...\n\nYou can use markdown formatting:\n# Headers\n- Bullet points\n**Bold text**\n*Italic text*\n\nExample:\n# Core Features\n- User authentication\n- Dashboard interface\n- Reporting system"
+                      placeholder={`Enter your project requirements here...
+
+Feel free to copy and paste from your csv, excel, or document.
+
+You can can also use markdown formatting:
+# Headers
+- Bullet points
+**Bold text**
+*Italic text*
+
+Example:
+# Core Features
+- User authentication
+- Dashboard interface
+- Reporting system`}
                       value={manualContent}
                       onChange={(e) => setManualContent(e.target.value)}
                       className="min-h-[300px] font-mono text-sm"
@@ -258,9 +306,12 @@ This project aims to develop a comprehensive user management system with the fol
                     <div className="space-y-2">
                       <Label>Live Preview</Label>
                       <div className="bg-muted p-4 rounded-md max-h-[200px] overflow-y-auto">
-                        <p className="text-sm whitespace-pre-wrap">
-                          {getContentPreview()}
-                        </p>
+                        <div
+                          className="text-sm prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{
+                            __html: renderMarkdown(getContentPreview()),
+                          }}
+                        />
                       </div>
                     </div>
                   )}
@@ -300,7 +351,7 @@ This project aims to develop a comprehensive user management system with the fol
                     {estimateFeatureCount(
                       activeTab === "confluence"
                         ? fetchedContent
-                        : manualContent,
+                        : manualContent
                     )}{" "}
                     features
                   </Badge>

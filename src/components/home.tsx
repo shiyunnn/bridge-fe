@@ -362,8 +362,14 @@ export default function Home() {
       {/* Header */}
       <header className="sticky top-0 z-10 border-b bg-background">
         <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold">Resource Management Dashboard</h1>
+          <div className="flex items-center gap-3">
+            <img
+              src="/bridge-logo.png"
+              alt="Bridge Logo"
+              className="h-8 w-auto"
+            />
+            <div className="h-6 w-[2px] bg-gray-300"></div>
+            <h1 className="text-xl font-bold text-[#000F4E]">Bridge</h1>
           </div>
           <div className="flex items-center gap-4">
             <Button
@@ -523,7 +529,7 @@ export default function Home() {
                                       >
                                         {project}
                                       </span>
-                                    ),
+                                    )
                                   )
                                 ) : (
                                   <span className="text-xs text-gray-500">
@@ -561,9 +567,9 @@ export default function Home() {
                                 setSelectedFeature(
                                   features.find((f) =>
                                     f.resources.some(
-                                      (r) => r.id === resource.id,
-                                    ),
-                                  ) || null,
+                                      (r) => r.id === resource.id
+                                    )
+                                  ) || null
                                 )
                               }
                             >
@@ -587,8 +593,8 @@ export default function Home() {
                                 resource.workload > 90
                                   ? "bg-red-500"
                                   : resource.workload > 70
-                                    ? "bg-yellow-500"
-                                    : "bg-green-500"
+                                  ? "bg-yellow-500"
+                                  : "bg-green-500"
                               }`}
                               style={{ width: `${resource.workload}%` }}
                             ></div>
