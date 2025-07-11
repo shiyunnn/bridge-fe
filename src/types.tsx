@@ -41,6 +41,7 @@ export interface GanttTask {
   duration?: number;
 
   text?: string;
+  details?: string;
   progress?: number;
   parent?: string | number;
   type?: 'task' | 'summary' | 'milestone' | any; //can be custom type
@@ -57,7 +58,10 @@ export interface GanttTask {
 }
 
 export interface GanttTasksResponse {
-  tasks: GanttTask[];
+  gantt_chart: {
+    tasks: GanttTask[];
+    links: GanttLink[];
+  }
 }
 
 export interface GanttLink {
@@ -86,10 +90,10 @@ export interface ProjectTask {
   id: number;
   title: string;
   description: string;
-  estimates: number;
+  estimates: string;
   priority: PriorityType;
   task_type: TaskType;
-  assignee_id: number;
+  assignee: User;
   children?: ProjectTask[];
 }
 

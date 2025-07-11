@@ -5,6 +5,7 @@ import omit from 'lodash/omit';
 
 import fallback from '@/utils/fallback';
 import joinUrlParams from '@/utils/joinUrlParams';
+import { API_URL } from '@/const';
 
 export interface UseApiQueryOptions<Res> extends Omit<UseQueryOptions<Res>, 'queryKey' | 'queryFn'> {
   onError?: (error: any) => void | any;
@@ -17,7 +18,7 @@ const useApiQuery = <Res,>(url: string, params?: object, options?: UseApiQueryOp
     queryKey: [url, paramsObj],
     queryFn: async () => {
       try {
-        const res = await fetch(`http://10.2.65.87:8000/api${joinUrlParams(url, params)}`, {
+        const res = await fetch(`${API_URL}${joinUrlParams(url, params)}`, {
           method: method || 'GET',
           headers: {
             'Content-Type': 'application/json',

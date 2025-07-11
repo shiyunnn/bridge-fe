@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 interface SelectTeamMemberProps {
   value: string;
-  onValueChange: (value: string) => void;
+  onValueChange: (assignee: User) => void;
   taskType: TaskType;
   variant?: 'default' | 'small';
   className?: string;
@@ -32,7 +32,7 @@ const SelectTeamMember = ({
   const teamMembers = data?.data || [];
 
   return (
-    <Select value={value} onValueChange={onValueChange}>
+    <Select value={value} onValueChange={(value) => onValueChange(teamMembers.find(member => member.id === parseInt(value)))}>
       <SelectTrigger className={cn(variant === 'small' ? 'w-32 h-7 text-xs' : 'h-8', className)}>
         <SelectValue placeholder="Select assignee" />
       </SelectTrigger>
@@ -42,6 +42,7 @@ const SelectTeamMember = ({
             {member.name}
           </SelectItem>
         ))}
+        <SelectItem value="0">Unassigned</SelectItem>
       </SelectContent>
     </Select>
   );

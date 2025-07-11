@@ -17,6 +17,24 @@ import {
 import Editor from "./Editor";
 import { useNavigate } from "react-router-dom";
 import DatePicker from "./ui/date-picker-with-range";
+import { useMutation } from "@tanstack/react-query";
+import { API_URL } from "@/const";
+
+function useCreateProjectMutation() {
+  return useMutation({
+    mutationFn: async (prdData: PRDData) => {
+      const res = await fetch(`${API_URL}/projects/create/`, {
+        method: 'POST',
+        body: JSON.stringify(prdData),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      const data = await res.json();
+      return data;
+    },
+  })
+}
 
 interface PRDInputPageProps {
   onSubmit?: (prdData: PRDData) => void;
@@ -24,17 +42,13 @@ interface PRDInputPageProps {
 }
 
 interface PRDData {
-  title: string;
-  content: string;
-  source: "confluence" | "manual";
-  confluenceUrl?: string;
-  estimatedFeatures?: number;
+  name: string;
+  description: string;
+  start_date?: string;
+  prd_input?: string;
 }
 
-const PRDInputPage: React.FC<PRDInputPageProps> = ({
-  onSubmit = () => { },
-  onGenerateTasks = () => { },
-}) => {
+const PRDInputPage: React.FC<PRDInputPageProps> = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"confluence" | "manual">(
     "confluence"
@@ -47,17 +61,24 @@ const PRDInputPage: React.FC<PRDInputPageProps> = ({
   const [isContentFetched, setIsContentFetched] = useState(false);
   const [prdDate, setPrdDate] = useState<Date>(new Date());
 
-  const handleSubmit = () => {
+  const { mutateAsync: createProject } = useCreateProjectMutation();
+
+  const handleSubmit = async () => {
+    setIsLoading(true);
     const content = activeTab === "confluence" ? confluenceUrl : manualContent;
     const prdData: PRDData = {
-      title: prdTitle,
-      content,
-      source: activeTab,
-      confluenceUrl: activeTab === "confluence" ? confluenceUrl : undefined,
-      estimatedFeatures: estimateFeatureCount(content),
+      name: prdTitle,
+      description: content,
+      start_date: prdDate ? prdDate.toISOString().split('T')[0] : null,
+      prd_input: content.trim().replace(/^\n+/, ''),
     };
 
-    navigate("/task-list");
+    const res: any = await createProject(prdData);
+    setIsLoading(false);
+
+    if (res?.code === 0) {
+      navigate(`/projects/${res?.data?.id}/tasks`);
+    }
   };
 
   const estimateFeatureCount = (content: string): number => {
@@ -221,7 +242,6 @@ const PRDInputPage: React.FC<PRDInputPageProps> = ({
                           placeholder="https://your-company.atlassian.net/wiki/spaces/..."
                           value={confluenceUrl}
                           onChange={(e) => setConfluenceUrl(e.target.value)}
-                          disabled={isLoading}
                         />
                       </div>
                     </div>
@@ -255,30 +275,16 @@ const PRDInputPage: React.FC<PRDInputPageProps> = ({
                       <Label htmlFor="manual-content">
                         Project Requirements *
                       </Label>
-                      {false && (
+                      
                         <Textarea
                           id="manual-content"
-                          placeholder={`Enter your project requirements here...
-
-Feel free to copy and paste from your csv, excel, or document.
-
-You can can also use markdown formatting:
-# Headers
-- Bullet points
-**Bold text**
-*Italic text*
-
-Example:
-# Core Features
-- User authentication
-- Dashboard interface
-- Reporting system`}
+                          placeholder={`Enter your project requirements here...`}
                           value={manualContent}
                           onChange={(e) => setManualContent(e.target.value)}
                           className="min-h-[300px] font-mono text-sm"
                         />
-                      )}
-                      <Editor onContentChange={setManualContent} />
+                      
+                      {false &&<Editor onContentChange={setManualContent} />}
                       <p className="text-xs text-muted-foreground">
                         Supports Markdown formatting. Use headers (#) and bullet
                         points (-) to structure your requirements.
@@ -352,12 +358,21 @@ Example:
           <div className="flex justify-center">
             <Button
               onClick={handleSubmit}
-              disabled={isSubmitDisabled()}
+              disabled={isSubmitDisabled() || isLoading}
               size="lg"
               className="min-w-[200px]"
             >
-              <Send className="h-4 w-4 mr-2" />
-              Generate Tasks & Continue
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating tasks...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Generate Tasks & Continue
+                </>
+              )}
             </Button>
           </div>
 

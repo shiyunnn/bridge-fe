@@ -97,8 +97,8 @@ function App() {
             <>
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/task-list" element={<TaskListPage />} />
-                <Route path="/gantt-chart" element={<ReactGanttChart />} />
+                <Route path="/projects/:id/tasks" element={<TaskListPage />} />
+                <Route path="/projects/:id/gantt-chart" element={<ReactGanttChart />} />
               </Routes>
               {import.meta.env.VITE_TEMPO === "true" && useRoutes(routes)}
             </>

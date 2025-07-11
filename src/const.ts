@@ -1,0 +1,1 @@
+export const API_URL = "http://10.2.65.87:8000/api";

@@ -28,34 +28,73 @@ import {
   ChevronDown,
   ChevronRight,
   Plus,
-  Edit3,
   Trash2,
   User as UserIcon,
   Clock,
   CheckCircle2,
   Circle,
-  AlertCircle,
+  Loader2,
 } from "lucide-react";
 
-import { ProjectTask, User } from "@/types";
+import { APIResponse, ProjectTask } from "@/types";
 import { PriorityType, RoleType, TaskType } from "@/enums";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import SelectTeamMember from "./SelectTeamMember";
+import useApiQuery from "@/hooks/useApiQuery";
+import { formatRounded } from "@/utils/formatRounded";
+import { API_URL } from "@/const";
+import { useMutation } from "@tanstack/react-query";
+
+function useCreateTaskMutation(id: number) {
+  return useMutation({
+    mutationFn: async (task: ProjectTask) => {
+      const res = await fetch(`${API_URL}/projects/${id}/tasks/create/`, {
+        method: "POST",
+        body: JSON.stringify({ ...task, assignee_id: task.assignee?.id }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      const data = await res.json();
+      return data;
+    }
+  })
+}
+
+function useGenerateGanttChartMutation(id: number) {
+  return useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${API_URL}/projects/${id}/gantt-chart/generate/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      const data = await res.json();
+      return data;
+    },
+  })
+}
 
 interface TaskListPageProps {
   initialTasks?: ProjectTask[];
   onTaskUpdate?: (tasks: ProjectTask[]) => void;
+  projectId: number;
 }
 
 const TaskListPage: React.FC<TaskListPageProps> = ({
   initialTasks = [],
-  onTaskUpdate = () => {},
+  onTaskUpdate = () => { },
+  projectId,
 }) => {
   const navigate = useNavigate();
+  const { mutateAsync: createTask } = useCreateTaskMutation(projectId);
+  const { mutateAsync: generateGanttChart, isPending: isGeneratingGanttChart } = useGenerateGanttChartMutation(projectId);
+
   const [tasks, setTasks] = useState<ProjectTask[]>(
-    initialTasks.length > 0 ? initialTasks : mockTasks
+    initialTasks.length > 0 ? initialTasks : []
   );
-  const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
+  const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set(initialTasks.map(task => task.id)));
   const [editingTask, setEditingTask] = useState<number | null>(null);
   const [editingTaskDescription, setEditingTaskDescription] = useState<
     number | null
@@ -97,7 +136,6 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
         const updatedSubtasks = task.children.map((subtask) =>
           subtask.id === subtaskId ? { ...subtask, ...updates } : subtask
         );
-        console.log(updatedSubtasks);
         return { ...task, children: updatedSubtasks };
       }
       return task;
@@ -106,19 +144,26 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
     onTaskUpdate(updatedTasks);
   };
 
-  const addTask = () => {
+  const addTask = async () => {
     if (!newTask.title || !newTask.description) return;
 
     const task: ProjectTask = {
       id: Math.random(),
       title: newTask.title,
       description: newTask.description,
-      estimates: newTask.estimates || 1,
-      assignee_id: newTask.assignee_id || 1,
+      estimates: newTask.estimates || "1",
+      assignee: newTask.assignee || null,
       priority: newTask.priority || 1,
       children: [],
       task_type: newTask.task_type || TaskType.General,
     };
+
+    try {
+      const res = await createTask(task);
+      console.log(res);
+    } catch (error) {
+      console.error(error);
+    }
 
     const updatedTasks = [...tasks, task];
     setTasks(updatedTasks);
@@ -133,8 +178,8 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
     const subtask: ProjectTask = {
       id: Math.random(),
       title: newSubtask.title,
-      estimates: newSubtask.estimates || 1,
-      assignee_id: newSubtask.assignee_id || 1,
+      estimates: newSubtask.estimates || "1",
+      assignee: null,
       priority: newSubtask.priority || 1,
       description: newSubtask.description || "",
       task_type: newSubtask.task_type || TaskType.General,
@@ -189,12 +234,12 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
 
   const getTotalEffort = () => {
     return tasks.reduce((total, task) => {
-      const taskEffort = task.estimates || 0;
+      const taskEffort = parseInt(task.estimates || "0");
       const subtaskEffort = task.children.reduce(
-        (subTotal, subtask) => subTotal + subtask.estimates,
+        (subTotal, subtask) => subTotal + parseInt(subtask.estimates || "0"),
         0
       );
-      return total + taskEffort + subtaskEffort;
+      return total + taskEffort;
     }, 0);
   };
 
@@ -220,11 +265,17 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
             </Button>
             <Button
               variant="outline"
-              onClick={() => {
-                navigate("/gantt-chart");
+              disabled={isGeneratingGanttChart}
+              onClick={async () => {
+                const res = await generateGanttChart();
+                console.log(res);
+                if (res.code === 0) {
+                  navigate(`/projects/${projectId}/gantt-chart`);
+                }
               }}
             >
               Generate Gantt Chart
+              {isGeneratingGanttChart && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
             </Button>
           </div>
         </div>
@@ -316,9 +367,8 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                         />
                       ) : (
                         <h3
-                          className={`font-medium cursor-pointer hover:text-blue-600 min-w-400 ${
-                            !task.title && "text-gray-400"
-                          }`}
+                          className={`font-medium cursor-pointer hover:text-blue-600 min-w-400 ${!task.title && "text-gray-400"
+                            }`}
                           onClick={() => setEditingTask(task.id)}
                         >
                           {task.title || "Enter task title"}
@@ -374,9 +424,8 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                       />
                     ) : (
                       <p
-                        className={`text-sm cursor-pointer hover:text-blue-600 hover:bg-blue-50 p-1 rounded transition-colors ${
-                          !task.description && "text-gray-400"
-                        }`}
+                        className={`text-sm cursor-pointer hover:text-blue-600 hover:bg-blue-50 p-1 rounded transition-colors ${!task.description && "text-gray-400"
+                          }`}
                         onClick={() => setEditingTaskDescription(task.id)}
                       >
                         {task.description || "Enter task description"}
@@ -391,7 +440,7 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                       Task type
                     </Label>
                     <Select
-                      value={task.task_type.toString()}
+                      value={task.task_type?.toString() || "0"}
                       onValueChange={(value) =>
                         updateTask(task.id, { task_type: parseInt(value) })
                       }
@@ -411,9 +460,9 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                       Assignee
                     </Label>
                     <SelectTeamMember
-                      value={`${task.assignee_id}`}
+                      value={`${task.assignee?.id || 0}`}
                       onValueChange={(value) =>
-                        updateTask(task.id, { assignee_id: parseInt(value) })
+                        updateTask(task.id, { assignee: value })
                       }
                       taskType={task.task_type}
                     />
@@ -454,7 +503,7 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                         // Otherwise parse normally
                         const parsed = parseInt(val, 10);
                         if (!isNaN(parsed)) {
-                          updateTask(task.id, { estimates: parsed });
+                          updateTask(task.id, { estimates: parsed.toString() });
                         }
                       }}
                       className="h-8"
@@ -559,10 +608,10 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
 
                               <SelectTeamMember
                                 variant="small"
-                                value={`${subtask.assignee_id}`}
+                                value={`${subtask.assignee?.id}`}
                                 onValueChange={(value) =>
                                   updateSubtask(task.id, subtask.id, {
-                                    assignee_id: parseInt(value),
+                                    assignee: value,
                                   })
                                 }
                                 taskType={subtask.task_type}
@@ -582,7 +631,7 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                                   const parsed = parseInt(val, 10);
                                   if (!isNaN(parsed)) {
                                     updateSubtask(task.id, subtask.id, {
-                                      estimates: parsed,
+                                      estimates: parsed.toString(),
                                     });
                                   }
                                 }}
@@ -697,7 +746,7 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                     onChange={(e) =>
                       setNewTask({
                         ...newTask,
-                        estimates: parseInt(e.target.value) || 1,
+                        estimates: (parseInt(e.target.value) || 1).toString(),
                       })
                     }
                     min="1"
@@ -706,9 +755,9 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                 <div>
                   <Label htmlFor="task-assignee">Assignee</Label>
                   <SelectTeamMember
-                    value={`${newTask.assignee_id}`}
+                    value={`${newTask.assignee?.id}`}
                     onValueChange={(value) =>
-                      setNewTask({ ...newTask, assignee_id: parseInt(value) })
+                      setNewTask({ ...newTask, assignee: value })
                     }
                     taskType={newTask.task_type}
                     className="h-9"
@@ -801,7 +850,7 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                     onChange={(e) =>
                       setNewSubtask({
                         ...newSubtask,
-                        estimates: parseInt(e.target.value) || 1,
+                        estimates: (parseInt(e.target.value) || 1).toString(),
                       })
                     }
                     min="1"
@@ -810,9 +859,9 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                 <div>
                   <Label htmlFor="subtask-assignee">Assignee</Label>
                   <SelectTeamMember
-                    value={`${newSubtask.assignee_id}`}
+                    value={`${newSubtask.assignee?.id}`}
                     onValueChange={(value) =>
-                      setNewSubtask({ ...newSubtask, assignee_id: parseInt(value) })
+                      setNewSubtask({ ...newSubtask, assignee: value })
                     }
                     taskType={newTask.task_type}
                     className="h-9"
@@ -836,127 +885,147 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
   );
 };
 
-// Mock data for demonstration
-const mockTasks: ProjectTask[] = [
-  {
-    id: 1,
-    title: "User Authentication System",
-    description:
-      "Implement secure login, registration, and password recovery flows",
-    estimates: 8,
-    assignee_id: 1,
-    priority: 1,
-    task_type: TaskType.BE,
-    children: [
-      {
-        id: 101,
-        title: "Login form UI",
-        estimates: 2,
-        assignee_id: 2,
-        priority: 1,
-        task_type: TaskType.BE,
-        description: "Test describe",
-      },
-      {
-        id: 102,
-        title: "Password validation logic",
-        estimates: 3,
-        assignee_id: 1,
-        priority: 1,
-        task_type: TaskType.FE,
-        description: "Test describe",
-      },
-      {
-        id: 3,
-        title: "JWT token implementation",
-        estimates: 3,
-        assignee_id: 3,
-        priority: 1,
-        task_type: TaskType.BE,
-        description: "Test describe",
-      },
-    ],
-  },
-  // {
-  //   id: 2,
-  //   title: "User Profile Management",
-  //   description:
-  //     "Create user profile pages with edit capabilities and avatar upload",
-  //   estimates: 6,
-  //   assignee_id: 2,
-  //   priority: 1,
-  //   task_type: TaskType.FE,
-  //   children: [
-  //     {
-  //       id: 201,
-  //       title: "Profile page layout",
-  //       estimates: 2,
-  //       assignee_id: 1,
-  //       priority: 1,
-  //       task_type: TaskType.FE,
-  //       description: 'Test describe',
-  //     },
-  //     {
-  //       id: 202,
-  //       title: "Avatar upload functionality",
-  //       estimates: 2,
-  //       assignee_id: 3,
-  //       priority: 1,
-  //       task_type: TaskType.FE,
-  //       description: 'Test describe',
-  //     },
-  //   ],
-  // },
-  // {
-  //   id: 3,
-  //   title: "Admin Dashboard",
-  //   description:
-  //     "Build comprehensive admin interface for user management and analytics",
-  //   estimates: 12,
-  //   assignee_id: 3,
-  //   priority: 1,
-  //   task_type: TaskType.FE,
-  //   children: [
-  //     {
-  //       id: 301,
-  //       title: "User management table",
-  //       estimates: 4,
-  //       assignee_id: 3,
-  //       priority: 1,
-  //       task_type: TaskType.FE,
-  //       description: 'Test describe',
-  //     },
-  //     {
-  //       id: 302,
-  //       title: "Analytics charts",
-  //       estimates: 4,
-  //       assignee_id: 3,
-  //       priority: 1,
-  //       task_type: TaskType.FE,
-  //       description: 'Test describe',
-  //     },
-  //     {
-  //       id: 303,
-  //       title: "System configuration panel",
-  //       estimates: 4,
-  //       assignee_id: 3,
-  //       priority: 1,
-  //       task_type: TaskType.FE,
-  //       description: 'Test describe',
-  //     },
-  //   ],
-  // },
-  // {
-  //   id: 4,
-  //   title: "API Integration",
-  //   description:
-  //     "Connect frontend with backend services and implement error handling",
-  //   estimates: 5,
-  //   assignee_id: 3,
-  //   priority: 1,
-  //   task_type: TaskType.BE,
-  //   children: [],
-  // },
-];
+// // Mock data for demonstration
+// const mockTasks: ProjectTask[] = [
+//   {
+//     id: 1,
+//     title: "User Authentication System",
+//     description:
+//       "Implement secure login, registration, and password recovery flows",
+//     estimates: "8",
+//     assignee_id: 1,
+//     priority: 1,
+//     task_type: TaskType.BE,
+//     children: [
+//       {
+//         id: 101,
+//         title: "Login form UI",
+//         estimates: "2",
+//         assignee_id: 2,
+//         priority: 1,
+//         task_type: TaskType.BE,
+//         description: "Test describe",
+//       },
+//       {
+//         id: 102,
+//         title: "Password validation logic",
+//         estimates: "3",
+//         assignee_id: 1,
+//         priority: 1,
+//         task_type: TaskType.FE,
+//         description: "Test describe",
+//       },
+//       {
+//         id: 3,
+//         title: "JWT token implementation",
+//         estimates: "3",
+//         assignee_id: 3,
+//         priority: 1,
+//         task_type: TaskType.BE,
+//         description: "Test describe",
+//       },
+//     ],
+//   },
+// {
+//   id: 2,
+//   title: "User Profile Management",
+//   description:
+//     "Create user profile pages with edit capabilities and avatar upload",
+//   estimates: 6,
+//   assignee_id: 2,
+//   priority: 1,
+//   task_type: TaskType.FE,
+//   children: [
+//     {
+//       id: 201,
+//       title: "Profile page layout",
+//       estimates: 2,
+//       assignee_id: 1,
+//       priority: 1,
+//       task_type: TaskType.FE,
+//       description: 'Test describe',
+//     },
+//     {
+//       id: 202,
+//       title: "Avatar upload functionality",
+//       estimates: 2,
+//       assignee_id: 3,
+//       priority: 1,
+//       task_type: TaskType.FE,
+//       description: 'Test describe',
+//     },
+//   ],
+// },
+// {
+//   id: 3,
+//   title: "Admin Dashboard",
+//   description:
+//     "Build comprehensive admin interface for user management and analytics",
+//   estimates: 12,
+//   assignee_id: 3,
+//   priority: 1,
+//   task_type: TaskType.FE,
+//   children: [
+//     {
+//       id: 301,
+//       title: "User management table",
+//       estimates: 4,
+//       assignee_id: 3,
+//       priority: 1,
+//       task_type: TaskType.FE,
+//       description: 'Test describe',
+//     },
+//     {
+//       id: 302,
+//       title: "Analytics charts",
+//       estimates: 4,
+//       assignee_id: 3,
+//       priority: 1,
+//       task_type: TaskType.FE,
+//       description: 'Test describe',
+//     },
+//     {
+//       id: 303,
+//       title: "System configuration panel",
+//       estimates: 4,
+//       assignee_id: 3,
+//       priority: 1,
+//       task_type: TaskType.FE,
+//       description: 'Test describe',
+//     },
+//   ],
+// },
+// {
+//   id: 4,
+//   title: "API Integration",
+//   description:
+//     "Connect frontend with backend services and implement error handling",
+//   estimates: 5,
+//   assignee_id: 3,
+//   priority: 1,
+//   task_type: TaskType.BE,
+//   children: [],
+// },
+// ];
 
-export default TaskListPage;
+const TaskListPageWrapper = () => {
+  const { id } = useParams();
+  const { data, isLoading } = useApiQuery<APIResponse<ProjectTask[]>>(`/projects/${id}/tasks/`);
+
+  return !isLoading && data ? (
+    <TaskListPage initialTasks={data.data?.map((ele) => ({
+      ...ele,
+      estimates: ele.estimates ? formatRounded(ele.estimates) : "0",
+      children: ele.children?.map((child) => ({
+        ...child,
+        estimates: child.estimates ? formatRounded(child.estimates) : "0",
+      })),
+    }))}
+      projectId={parseInt(id)}
+    />
+  ) : (
+    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+  )
+}
+
+export default TaskListPageWrapper;
