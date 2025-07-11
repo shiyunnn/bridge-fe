@@ -95,6 +95,7 @@ export interface ProjectTask {
   task_type: TaskType;
   assignee: User;
   children?: ProjectTask[];
+  parent_id?: number;
 }
 
 export interface ResponseError {

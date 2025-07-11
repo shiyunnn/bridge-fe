@@ -63,6 +63,22 @@ function useCreateTaskMutation(id: number) {
   })
 }
 
+function useUpdateTaskMutation(id: number) {
+  return useMutation({
+    mutationFn: async (task: ProjectTask) => {
+      const res = await fetch(`${API_URL}/projects/${id}/tasks/${task.id}/update/`, {
+        method: 'PUT',
+        body: JSON.stringify({ ...task, assignee_id: task.assignee?.id }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      const data = await res.json();
+      return data;
+    }
+  })
+}
+
 function useGenerateGanttChartMutation(id: number) {
   return useMutation({
     mutationFn: async () => {
@@ -91,6 +107,7 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
 }) => {
   const navigate = useNavigate();
   const { mutateAsync: createTask } = useCreateTaskMutation(projectId);
+  const { mutateAsync: updateTaskAsync } = useUpdateTaskMutation(projectId);
   const { mutateAsync: generateGanttChart, isPending: isGeneratingGanttChart } = useGenerateGanttChartMutation(projectId);
 
   const [tasks, setTasks] = useState<ProjectTask[]>(
@@ -120,28 +137,49 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
     setExpandedTasks(newExpanded);
   };
 
-  const updateTask = (taskId: number, updates: Partial<ProjectTask>) => {
+  const updateTask = async (taskId: number, updates: Partial<ProjectTask>) => {
     const updatedTasks = tasks.map((task) =>
       task.id === taskId ? { ...task, ...updates } : task
     );
+    const taskToUpdate = updatedTasks.find((task) => task.id === taskId);
+    if (taskToUpdate) {
+      try {
+        const res = await updateTaskAsync(taskToUpdate);
+        console.log(res);
+      } catch (error) {
+        console.error(error);
+      }
+    }
     setTasks(updatedTasks);
     onTaskUpdate(updatedTasks);
   };
 
-  const updateSubtask = (
+  const updateSubtask = async (
     taskId: number,
     subtaskId: number,
     updates: Partial<ProjectTask>
   ) => {
+    let subtaskToUpdate: ProjectTask | null = null;
     const updatedTasks = tasks.map((task) => {
       if (task.id === taskId) {
         const updatedSubtasks = task.children.map((subtask) =>
           subtask.id === subtaskId ? { ...subtask, ...updates } : subtask
         );
+        subtaskToUpdate = updatedSubtasks.find((subtask) => subtask.id === subtaskId);
         return { ...task, children: updatedSubtasks };
       }
       return task;
     });
+
+    if (subtaskToUpdate) {
+      try {
+        const res = await updateTaskAsync({ ...subtaskToUpdate, parent_id: taskId });
+        console.log(res);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
     setTasks(updatedTasks);
     onTaskUpdate(updatedTasks);
   };
@@ -174,18 +212,26 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
     setIsAddTaskDialogOpen(false);
   };
 
-  const addSubtask = () => {
+  const addSubtask = async () => {
     if (!newSubtask.title || !selectedTaskForSubtask) return;
 
     const subtask: ProjectTask = {
       id: Math.random(),
       title: newSubtask.title,
       estimates: newSubtask.estimates || "1",
-      assignee: null,
+      assignee: newSubtask.assignee,
       priority: newSubtask.priority || 1,
       description: newSubtask.description || "",
       task_type: newSubtask.task_type || TaskType.General,
+      parent_id: selectedTaskForSubtask || null,
     };
+
+    try {
+      const res = await createTask(subtask);
+      console.log(res);
+    } catch (error) {
+      console.error(error);
+    }
 
     const updatedTasks = tasks.map((task) => {
       if (task.id === selectedTaskForSubtask) {
@@ -842,6 +888,37 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
+                  <Label htmlFor="task-type">Task type</Label>
+                  <Select
+                    value={newSubtask.task_type?.toString() || "0"}
+                    onValueChange={(value) =>
+                      setNewSubtask({ ...newSubtask, task_type: parseInt(value) })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">NA</SelectItem>
+                      <SelectItem value="1">FE</SelectItem>
+                      <SelectItem value="2">BE</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="subtask-assignee">Assignee</Label>
+                  <SelectTeamMember
+                    value={`${newSubtask.assignee?.id}`}
+                    onValueChange={(value) =>
+                      setNewSubtask({ ...newSubtask, assignee: value })
+                    }
+                    taskType={newTask.task_type}
+                    className="h-9"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <Label htmlFor="subtask-effort">
                     Estimated Effort (days)
                   </Label>
@@ -858,18 +935,8 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                     min="1"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="subtask-assignee">Assignee</Label>
-                  <SelectTeamMember
-                    value={`${newSubtask.assignee?.id}`}
-                    onValueChange={(value) =>
-                      setNewSubtask({ ...newSubtask, assignee: value })
-                    }
-                    taskType={newTask.task_type}
-                    className="h-9"
-                  />
-                </div>
               </div>
+
               <div className="flex justify-end gap-2">
                 <Button
                   variant="outline"
