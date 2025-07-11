@@ -276,15 +276,15 @@ const PRDInputPage: React.FC<PRDInputPageProps> = () => {
                         Project Requirements *
                       </Label>
                       
-                        <Textarea
+                        {false &&<Textarea
                           id="manual-content"
                           placeholder={`Enter your project requirements here...`}
                           value={manualContent}
                           onChange={(e) => setManualContent(e.target.value)}
                           className="min-h-[300px] font-mono text-sm"
-                        />
+                        />}
                       
-                      {false &&<Editor onContentChange={setManualContent} />}
+                      {true &&<Editor onContentChange={setManualContent} />}
                       <p className="text-xs text-muted-foreground">
                         Supports Markdown formatting. Use headers (#) and bullet
                         points (-) to structure your requirements.

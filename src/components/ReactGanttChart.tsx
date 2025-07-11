@@ -1,6 +1,6 @@
-import { Gantt, Willow } from 'wx-react-gantt';
+import { Gantt, Willow, defaultEditorShape } from 'wx-react-gantt';
 import 'wx-react-gantt/dist/gantt.css';
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { APIResponse, GanttLink, GanttTask, GanttTasksResponse } from '../types';
 import styled from 'styled-components';
 import { mix } from 'polished';
@@ -20,50 +20,57 @@ const Container = styled.div`
       align-items: center;
     }
 
-    .wx-bar.wx-user-1 {
+    .wx-bar.wx-task {
       color: transparent;
-      background-color: #9fb3df !important;
-      border: 1px solid #63667a;
+      background-color: #8fe968 !important;
 
       .wx-progress-wrapper {
         .wx-progress-percent {
-          background-color: ${mix(50, '#9FB3DF', '#FFFFFF')} !important;
+          background-color: ${mix(50, '#8fe968', '#FFFFFF')} !important;
+        }
+      }
+    }
+
+    .wx-bar.wx-user-1 {
+      color: transparent;
+      background-color: #fe797b !important;
+
+      .wx-progress-wrapper {
+        .wx-progress-percent {
+          background-color: ${mix(50, '#fe797b', '#FFFFFF')} !important;
         }
       }
     }
 
     .wx-bar.wx-user-2 {
       color: transparent;
-      background-color: #9ec6f3 !important;
-      border: 1px solid #63667a;
+      background-color: #36cedc !important;
 
       .wx-progress-wrapper {
         .wx-progress-percent {
-          background-color: ${mix(50, '#9EC6F3', '#FFFFFF')} !important;
+          background-color: ${mix(50, '#36cedc', '#FFFFFF')} !important;
         }
       }
     }
 
     .wx-bar.wx-user-3 {
       color: transparent;
-      background-color: #bddde4 !important;
-      border: 1px solid #63667a;
+      background-color: #ffea56 !important;
 
       .wx-progress-wrapper {
         .wx-progress-percent {
-          background-color: ${mix(50, '#BDDDE4', '#FFFFFF')} !important;
+          background-color: ${mix(50, '#ffea56', '#FFFFFF')} !important;
         }
       }
     }
 
     .wx-bar.wx-user-4 {
       color: transparent;
-      background-color: #fae7f3 !important;
-      border: 1px solid #63667a;
+      background-color: #FFB750 !important;
 
       .wx-progress-wrapper {
         .wx-progress-percent {
-          background-color: ${mix(50, '#FAE7F3', '#FFFFFF')} !important;
+          background-color: ${mix(50, '#FFB750', '#FFFFFF')} !important;
         }
       }
     }
@@ -71,7 +78,6 @@ const Container = styled.div`
     .wx-bar.wx-user-5 {
       color: transparent;
       background-color: #ffe3a9 !important;
-      border: 1px solid #63667a;
 
       .wx-progress-wrapper {
         .wx-progress-percent {
@@ -86,7 +92,7 @@ const Container = styled.div`
   }
 
   .wx-gantt .wx-baseline {
-    height: 12px !important;
+    display: none;
   }
 `;
 
@@ -123,27 +129,74 @@ const GanttChart = ({ tasks: taskProp, links }: { tasks: GanttTask[], links: Gan
     return day ? 'wx-weekend' : '';
   };
 
+  const columns = [
+    { id: "text", header: "Task name", flexgrow: 3 },
+    {
+      id: "start",
+      header: "Start date",
+      width: 90,
+      align: "center",
+    },
+    {
+      id: "action",
+      header: "",
+      width: 50,
+      align: "center",
+    },
+  ];
+
   const complexScales = [
     { unit: 'year', step: 1, format: 'yyyy' },
     { unit: 'month', step: 2, format: 'MMMM yyy' },
     { unit: 'day', step: 1, format: 'd' },
   ];
 
+  const apiRef = useRef<any>();
+
+  useEffect(() => {
+    if (apiRef.current) {
+      const { tasks, links } = apiRef.current?.getState();
+      console.log(tasks); //output the state of tasks
+
+      const newLinks = links._data;
+      console.log(newLinks);
+
+      const stores = apiRef.current.getStores();
+      console.log("DataStore:", stores);
+      console.log('tasks value:', stores.data?._values?._tasks);
+    }
+  }, [apiRef.current]);
+
+  const editorShape = defaultEditorShape.filter((ele) => ele.key !== 'progress').map((ele) => {
+    if (ele.key === 'type') {
+      return {
+        ...ele,
+        label: 'Assignee',
+      }
+    }
+    return ele;
+  });
+
   return (
     <Willow>
       <Container className="gantt-chart">
         <Gantt
-          baselines
-          tasks={[...tasks]}
+          // ref={apiRef}
+          // init={(api) => (apiRef.current = api)}
+          // baselines
+          tasks={tasks.map((ele) => ({ ...ele, type: ele.type || 'task' }))}
           links={links}
-          taskTypes={[...taskTypes]}
+          taskTypes={[...taskTypes, { id: 'task', label: 'Not Assigned' }]}
           scales={complexScales}
-          start={new Date(2024, 5, 9)}
-          end={new Date(2024, 8, 31)}
+          start={new Date(2024, 5, 29)}
+          end={new Date(2024, 10, 31)}
           highlightTime={highlightTime}
+          cellWidth={30}
           onDoubleClick={(task) => {
             console.log(task);
           }}
+          columns={columns}
+          editorShape={editorShape}
         />
       </Container>
     </Willow>
@@ -161,6 +214,7 @@ const GanttChartWrapper = () => {
       nextDay.setDate(date.getDate() + ele.duration);
       return {
         ...ele,
+        text: ele?.text?.trim() || '',
         end: new Date(nextDay.toISOString().split('T')[0]),
       }
     })} links={data.data.gantt_chart.links} />

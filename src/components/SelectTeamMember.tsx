@@ -27,7 +27,7 @@ const SelectTeamMember = ({
 }: SelectTeamMemberProps) => {
   const { data } = useApiQuery<APIResponse<User[]>>(
     '/users/',
-    { task_type: !taskType ? '' : taskType },
+    { task_type: !taskType ? null : taskType },
   );
   const teamMembers = data?.data || [];
 

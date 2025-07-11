@@ -34,6 +34,8 @@ import {
   CheckCircle2,
   Circle,
   Loader2,
+  BarChartBig,
+  GanttChart,
 } from "lucide-react";
 
 import { APIResponse, ProjectTask } from "@/types";
@@ -291,7 +293,22 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                   </p>
                   <p className="text-2xl font-bold">{tasks.length}</p>
                 </div>
-                <Circle className="w-8 h-8 text-blue-500" />
+                <BarChartBig className="w-8 h-8 text-blue-500" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Total Subtasks
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {tasks.reduce((total, task) => total + task.children?.length, 0)}
+                  </p>
+                </div>
+                <GanttChart className="w-8 h-8 text-orange-500" />
               </div>
             </CardContent>
           </Card>
@@ -321,21 +338,6 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                   <p className="text-xs text-muted-foreground">days</p>
                 </div>
                 <Clock className="w-8 h-8 text-purple-500" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Features
-                  </p>
-                  <p className="text-2xl font-bold">
-                    {Object.keys(tasks).length}
-                  </p>
-                </div>
-                <UserIcon className="w-8 h-8 text-orange-500" />
               </div>
             </CardContent>
           </Card>
