@@ -8,12 +8,14 @@ import {
 } from "@/components/ui/select";
 import { TaskType } from "@/enums";
 import useApiQuery from "@/hooks/useApiQuery";
+import { cn } from "@/lib/utils";
 
 interface SelectTeamMemberProps {
   value: string;
   onValueChange: (value: string) => void;
   taskType: TaskType;
   variant?: 'default' | 'small';
+  className?: string;
 }
 
 const SelectTeamMember = ({
@@ -21,6 +23,7 @@ const SelectTeamMember = ({
   onValueChange,
   taskType,
   variant = 'default',
+  className = '',
 }: SelectTeamMemberProps) => {
   const { data } = useApiQuery<APIResponse<User[]>>(
     '/users/',
@@ -30,7 +33,7 @@ const SelectTeamMember = ({
 
   return (
     <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger className={variant === 'small' ? 'w-32 h-7 text-xs' : 'h-8'}>
+      <SelectTrigger className={cn(variant === 'small' ? 'w-32 h-7 text-xs' : 'h-8', className)}>
         <SelectValue placeholder="Select assignee" />
       </SelectTrigger>
       <SelectContent>

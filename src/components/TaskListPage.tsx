@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -68,30 +68,6 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
   >(null);
   const [newTask, setNewTask] = useState<Partial<ProjectTask>>({});
   const [newSubtask, setNewSubtask] = useState<Partial<ProjectTask>>({});
-
-  const teamMembers: User[] = [
-    {
-      id: 1,
-      name: "John Doe",
-      email: "john.doe@example.com",
-      role: RoleType.PM,
-      avatar: "https://via.placeholder.com/150",
-    },
-    {
-      id: 2,
-      name: "Jane Smith",
-      email: "jane.smith@example.com",
-      role: RoleType.FE,
-      avatar: "https://via.placeholder.com/150",
-    },
-    {
-      id: 3,
-      name: "Alice Johnson",
-      email: "alice.johnson@example.com",
-      role: RoleType.BE,
-      avatar: "https://via.placeholder.com/150",
-    },
-  ];
 
   const toggleTaskExpansion = (taskId: number) => {
     const newExpanded = new Set(expandedTasks);
@@ -729,23 +705,14 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                 </div>
                 <div>
                   <Label htmlFor="task-assignee">Assignee</Label>
-                  <Select
-                    value={`${newTask.assignee_id}` || `${teamMembers[0].id}`}
+                  <SelectTeamMember
+                    value={`${newTask.assignee_id}`}
                     onValueChange={(value) =>
                       setNewTask({ ...newTask, assignee_id: parseInt(value) })
                     }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {teamMembers.map((member) => (
-                        <SelectItem key={member.id} value={`${member.id}`}>
-                          {member.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    taskType={newTask.task_type}
+                    className="h-9"
+                  />
                 </div>
                 {false && (
                   <div>
@@ -842,28 +809,14 @@ const TaskListPage: React.FC<TaskListPageProps> = ({
                 </div>
                 <div>
                   <Label htmlFor="subtask-assignee">Assignee</Label>
-                  <Select
-                    value={
-                      `${newSubtask.assignee_id}` || `${teamMembers[0].id}`
-                    }
+                  <SelectTeamMember
+                    value={`${newSubtask.assignee_id}`}
                     onValueChange={(value) =>
-                      setNewSubtask({
-                        ...newSubtask,
-                        assignee_id: parseInt(value),
-                      })
+                      setNewSubtask({ ...newSubtask, assignee_id: parseInt(value) })
                     }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {teamMembers.map((member) => (
-                        <SelectItem key={member.id} value={`${member.id}`}>
-                          {member.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    taskType={newTask.task_type}
+                    className="h-9"
+                  />
                 </div>
               </div>
               <div className="flex justify-end gap-2">

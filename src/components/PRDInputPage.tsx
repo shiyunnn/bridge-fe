@@ -15,6 +15,8 @@ import {
   ArrowDown,
 } from "lucide-react";
 import Editor from "./Editor";
+import { useNavigate } from "react-router-dom";
+import DatePicker from "./ui/date-picker-with-range";
 
 interface PRDInputPageProps {
   onSubmit?: (prdData: PRDData) => void;
@@ -33,6 +35,7 @@ const PRDInputPage: React.FC<PRDInputPageProps> = ({
   onSubmit = () => { },
   onGenerateTasks = () => { },
 }) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"confluence" | "manual">(
     "confluence"
   );
@@ -42,66 +45,7 @@ const PRDInputPage: React.FC<PRDInputPageProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [fetchedContent, setFetchedContent] = useState("");
   const [isContentFetched, setIsContentFetched] = useState(false);
-
-  const handleConfluenceFetch = async () => {
-    if (!confluenceUrl.trim()) return;
-
-    setIsLoading(true);
-    try {
-      // Simulate API call to fetch Confluence content
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // Mock fetched content
-      const mockContent = `# Project Requirements Document
-
-## Overview
-This project aims to develop a comprehensive user management system with the following key features:
-
-## Core Features
-
-### 1. User Authentication
-- Secure login/logout functionality
-- Password reset capabilities
-- Multi-factor authentication support
-- Session management
-
-### 2. User Profile Management
-- Profile creation and editing
-- Avatar upload functionality
-- Privacy settings
-- Account deactivation
-
-### 3. Admin Dashboard
-- User management interface
-- Analytics and reporting
-- System configuration
-- Audit logs
-
-## Technical Requirements
-- Frontend: React with TypeScript
-- Backend: Node.js with Express
-- Database: PostgreSQL
-- Authentication: JWT tokens
-
-## Timeline
-- Phase 1: Authentication (2 weeks)
-- Phase 2: Profile Management (3 weeks)
-- Phase 3: Admin Dashboard (2 weeks)
-
-## Success Criteria
-- 99.9% uptime
-- Sub-200ms response times
-- Support for 10,000+ concurrent users`;
-
-      setFetchedContent(mockContent);
-      setPrdTitle("User Management System PRD");
-      setIsContentFetched(true);
-    } catch (error) {
-      console.error("Failed to fetch Confluence content:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [prdDate, setPrdDate] = useState<Date>(new Date());
 
   const handleSubmit = () => {
     const content = activeTab === "confluence" ? confluenceUrl : manualContent;
@@ -113,8 +57,7 @@ This project aims to develop a comprehensive user management system with the fol
       estimatedFeatures: estimateFeatureCount(content),
     };
 
-    onSubmit(prdData);
-    onGenerateTasks(prdData);
+    navigate("/task-list");
   };
 
   const estimateFeatureCount = (content: string): number => {
@@ -126,7 +69,7 @@ This project aims to develop a comprehensive user management system with the fol
 
   const isSubmitDisabled = () => {
     if (activeTab === "confluence") {
-      return !isContentFetched || !prdTitle.trim();
+      return !confluenceUrl.trim() || !prdTitle.trim();
     }
     return !manualContent.trim() || !prdTitle.trim();
   };
@@ -233,6 +176,11 @@ This project aims to develop a comprehensive user management system with the fol
                   />
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="prd-title">Start Date</Label>
+                  <DatePicker date={prdDate} setDate={setPrdDate} />
+                </div>
+
                 {/* Input Method Tabs */}
                 <Tabs
                   value={activeTab}
@@ -265,7 +213,7 @@ This project aims to develop a comprehensive user management system with the fol
                   <TabsContent value="confluence" className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="confluence-url">
-                        Confluence Page URL
+                        Confluence Page URL *
                       </Label>
                       <div className="flex gap-2">
                         <Input
@@ -275,20 +223,6 @@ This project aims to develop a comprehensive user management system with the fol
                           onChange={(e) => setConfluenceUrl(e.target.value)}
                           disabled={isLoading}
                         />
-                        {false && <Button
-                          onClick={handleConfluenceFetch}
-                          disabled={!confluenceUrl.trim() || isLoading}
-                          className="min-w-[100px]"
-                        >
-                          {isLoading ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Fetching
-                            </>
-                          ) : (
-                            "Fetch Content"
-                          )}
-                        </Button>}
                       </div>
                     </div>
 
@@ -319,7 +253,7 @@ This project aims to develop a comprehensive user management system with the fol
                   <TabsContent value="manual" className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="manual-content">
-                        Project Requirements
+                        Project Requirements *
                       </Label>
                       {false && (
                         <Textarea
@@ -351,7 +285,7 @@ Example:
                       </p>
                     </div>
 
-                    {manualContent && (
+                    {false && manualContent && (
                       <div className="space-y-2">
                         <Label>Live Preview</Label>
                         <div className="bg-muted p-4 rounded-md max-h-[200px] overflow-y-auto">
@@ -371,7 +305,7 @@ Example:
           </Card>
 
           {/* Summary Card */}
-          {(isContentFetched || manualContent) && prdTitle && (
+          {false && (isContentFetched || manualContent) && prdTitle && (
             <Card className="bg-white">
               <CardHeader>
                 <CardTitle>PRD Summary</CardTitle>
