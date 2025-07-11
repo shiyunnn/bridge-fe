@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { AlertCircle, Calendar, Users, ArrowRight } from "lucide-react";
+import { AlertCircle, Calendar, Users, ArrowRight, X } from "lucide-react";
 
 interface Developer {
   id: string;
@@ -36,69 +36,53 @@ interface ConflictDetectionPanelProps {
   conflicts?: Conflict[];
   onResolveConflict?: (
     conflictId: string,
-    resolution: "reassign" | "reschedule",
+    resolution: "reassign" | "reschedule"
   ) => void;
+  onClose?: () => void;
 }
 
 const ConflictDetectionPanel: React.FC<ConflictDetectionPanelProps> = ({
-  conflicts = [
-    {
-      id: "1",
-      developer: {
-        id: "dev1",
-        name: "Alex Johnson",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Alex",
-        role: "FE",
-      },
-      date: "2023-06-15",
-      projects: [
-        { id: "proj1", name: "Dashboard Redesign" },
-        { id: "proj2", name: "Mobile App" },
-      ],
-      severity: "high",
-    },
-    {
-      id: "2",
-      developer: {
-        id: "dev2",
-        name: "Sam Taylor",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sam",
-        role: "BE",
-      },
-      date: "2023-06-16",
-      projects: [
-        { id: "proj1", name: "Dashboard Redesign" },
-        { id: "proj3", name: "API Integration" },
-      ],
-      severity: "medium",
-    },
-    {
-      id: "3",
-      developer: {
-        id: "dev3",
-        name: "Jamie Lee",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jamie",
-        role: "QA",
-      },
-      date: "2023-06-17",
-      projects: [
-        { id: "proj2", name: "Mobile App" },
-        { id: "proj4", name: "Analytics Platform" },
-      ],
-      severity: "low",
-    },
-  ],
+  conflicts = [],
   onResolveConflict = () => {},
+  onClose = () => {},
 }) => {
   const [selectedConflict, setSelectedConflict] = useState<Conflict | null>(
-    null,
+    null
   );
   const [activeTab, setActiveTab] = useState("all");
 
+  // Transform conflicts to match the expected format
+  const transformedConflicts = conflicts.map((conflict: any) => ({
+    id: conflict.id,
+    developer: {
+      id: conflict.resourceId || conflict.id,
+      name: conflict.resourceName || "Unknown Developer",
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${
+        conflict.resourceName || conflict.id
+      }`,
+      role: "FE" as const,
+    },
+    date: conflict.date
+      ? new Date(conflict.date).toISOString().split("T")[0]
+      : new Date().toISOString().split("T")[0],
+    projects: conflict.featureNames
+      ? conflict.featureNames.map((name: string, index: number) => ({
+          id: conflict.featureIds?.[index] || `proj-${index}`,
+          name: name,
+        }))
+      : [
+          { id: "proj1", name: "Project A" },
+          { id: "proj2", name: "Project B" },
+        ],
+    severity: conflict.resolved ? "low" : ("high" as "high" | "medium" | "low"),
+  }));
+
   const filteredConflicts =
     activeTab === "all"
-      ? conflicts
-      : conflicts.filter((conflict) => conflict.severity === activeTab);
+      ? transformedConflicts
+      : transformedConflicts.filter(
+          (conflict) => conflict.severity === activeTab
+        );
 
   const handleSelectConflict = (conflict: Conflict) => {
     setSelectedConflict(conflict);
@@ -125,9 +109,9 @@ const ConflictDetectionPanel: React.FC<ConflictDetectionPanelProps> = ({
       case "high":
         return "destructive";
       case "medium":
-        return "warning";
-      case "low":
         return "secondary";
+      case "low":
+        return "outline";
       default:
         return "secondary";
     }
@@ -143,9 +127,14 @@ const ConflictDetectionPanel: React.FC<ConflictDetectionPanelProps> = ({
             </CardTitle>
             <CardDescription>Detected allocation conflicts</CardDescription>
           </div>
-          <Badge variant="outline" className="ml-2">
-            {conflicts.length} conflicts
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="ml-2">
+              {transformedConflicts.length} conflicts
+            </Badge>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -171,7 +160,11 @@ const ConflictDetectionPanel: React.FC<ConflictDetectionPanelProps> = ({
                 {filteredConflicts.map((conflict) => (
                   <div
                     key={conflict.id}
-                    className={`p-3 rounded-md border cursor-pointer transition-colors ${selectedConflict?.id === conflict.id ? "bg-accent border-primary" : "hover:bg-accent/50"}`}
+                    className={`p-3 rounded-md border cursor-pointer transition-colors ${
+                      selectedConflict?.id === conflict.id
+                        ? "bg-accent border-primary"
+                        : "hover:bg-accent/50"
+                    }`}
                     onClick={() => handleSelectConflict(conflict)}
                   >
                     <div className="flex items-center justify-between">

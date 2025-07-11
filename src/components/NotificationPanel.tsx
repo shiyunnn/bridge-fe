@@ -32,6 +32,7 @@ interface NotificationPanelProps {
   onRejectSuggestion?: (notificationId: string) => void;
   onDismissNotification?: (notificationId: string) => void;
   onMarkAllAsRead?: () => void;
+  onClose?: () => void;
 }
 
 const NotificationPanel: React.FC<NotificationPanelProps> = ({
@@ -40,15 +41,45 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
   onRejectSuggestion = () => {},
   onDismissNotification = () => {},
   onMarkAllAsRead = () => {},
+  onClose = () => {},
 }) => {
   const [activeTab, setActiveTab] = useState<string>("all");
 
-  const filteredNotifications = notifications.filter((notification) => {
-    if (activeTab === "all") return true;
-    return notification.type === activeTab;
-  });
+  // Transform notifications to match the expected format
+  const transformedNotifications = notifications.map((notification: any) => ({
+    id: notification.id,
+    type:
+      notification.type === "estimate_change"
+        ? "estimate"
+        : notification.type === "leave_request"
+        ? "leave"
+        : "conflict",
+    title: notification.message.split(":")[0] || notification.message,
+    description: notification.message,
+    timestamp: notification.date
+      ? new Date(notification.date).toLocaleDateString()
+      : "Recently",
+    read: notification.read,
+    actions: {
+      accept: {
+        label: "Accept",
+        action: () => onAcceptSuggestion(notification.id),
+      },
+      reject: {
+        label: "Dismiss",
+        action: () => onDismissNotification(notification.id),
+      },
+    },
+  }));
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const filteredNotifications = transformedNotifications.filter(
+    (notification) => {
+      if (activeTab === "all") return true;
+      return notification.type === activeTab;
+    }
+  );
+
+  const unreadCount = transformedNotifications.filter((n) => !n.read).length;
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -89,9 +120,14 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
               </Badge>
             )}
           </CardTitle>
-          <Button variant="ghost" size="sm" onClick={onMarkAllAsRead}>
-            Mark all read
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={onMarkAllAsRead}>
+              Mark all read
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid grid-cols-4 w-full">
@@ -109,7 +145,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
               {filteredNotifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`p-3 rounded-lg border ${notification.read ? "bg-white" : "bg-blue-50"}`}
+                  className={`p-3 rounded-lg border ${
+                    notification.read ? "bg-white" : "bg-blue-50"
+                  }`}
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex gap-3">

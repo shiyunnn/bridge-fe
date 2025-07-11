@@ -425,10 +425,6 @@ export default function Home() {
               <Calendar className="mr-2 h-4 w-4" />
               Gantt Chart
             </TabsTrigger>
-            <TabsTrigger value="resources">
-              <Users className="mr-2 h-4 w-4" />
-              Resources
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="prd-input" className="w-full">
