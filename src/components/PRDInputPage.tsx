@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Link, FileText, Send, Loader2, CheckCircle } from "lucide-react";
+import Editor from "./Editor";
 
 interface PRDInputPageProps {
   onSubmit?: (prdData: PRDData) => void;
@@ -22,8 +23,8 @@ interface PRDData {
 }
 
 const PRDInputPage: React.FC<PRDInputPageProps> = ({
-  onSubmit = () => {},
-  onGenerateTasks = () => {},
+  onSubmit = () => { },
+  onGenerateTasks = () => { },
 }) => {
   const [activeTab, setActiveTab] = useState<"confluence" | "manual">(
     "confluence",
@@ -239,13 +240,14 @@ This project aims to develop a comprehensive user management system with the fol
                 <TabsContent value="manual" className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="manual-content">Project Requirements</Label>
-                    <Textarea
+                    {false && <Textarea
                       id="manual-content"
                       placeholder="Enter your project requirements here...\n\nYou can use markdown formatting:\n# Headers\n- Bullet points\n**Bold text**\n*Italic text*\n\nExample:\n# Core Features\n- User authentication\n- Dashboard interface\n- Reporting system"
                       value={manualContent}
                       onChange={(e) => setManualContent(e.target.value)}
                       className="min-h-[300px] font-mono text-sm"
-                    />
+                    />}
+                    <Editor />
                     <p className="text-xs text-muted-foreground">
                       Supports Markdown formatting. Use headers (#) and bullet
                       points (-) to structure your requirements.
