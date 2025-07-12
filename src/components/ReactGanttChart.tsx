@@ -88,7 +88,7 @@ const Container = styled.div`
   }
 
   .wx-gantt .wx-weekend {
-    // display: none;
+    display: none;
   }
 
   .wx-gantt .wx-baseline {
@@ -215,7 +215,7 @@ const GanttChartWrapper = () => {
       return {
         ...ele,
         text: ele?.text?.trim() || '',
-        end: new Date(nextDay.toISOString().split('T')[0]),
+        // end: new Date(nextDay.toISOString().split('T')[0]),
       }
     })} links={data.data.gantt_chart.links} />
   ) : (
